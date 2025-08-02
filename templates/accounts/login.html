@@ -1,0 +1,120 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Social Dashboard</title>
+    
+    <!-- External Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+</head>
+<body>
+    <div class="container">
+        <!-- Left Side - Social Media Illustration -->
+        <div class="left-side">
+            <div class="floating-elements">
+                <div class="floating-element"></div>
+                <div class="floating-element"></div>
+                <div class="floating-element"></div>
+            </div>
+            
+            <div class="illustration">
+                <div class="social-cards">
+                    <div class="social-card">
+                        <i class="fab fa-linkedin linkedin"></i>
+                        <h4>LinkedIn</h4>
+                        <p>Professional Network</p>
+                    </div>
+                    <div class="social-card">
+                        <i class="fab fa-twitter twitter"></i>
+                        <h4>Twitter</h4>
+                        <p>Real-time Updates</p>
+                    </div>
+                    <div class="social-card">
+                        <i class="fab fa-facebook facebook"></i>
+                        <h4>Facebook</h4>
+                        <p>Social Connection</p>
+                    </div>
+                </div>
+                
+                <h1 class="main-title">Social Dashboard</h1>
+                <p class="subtitle">
+                    Connect and manage all your social media accounts in one place. 
+                    Track your performance across LinkedIn, Twitter, and Facebook.
+                </p>
+            </div>
+        </div>
+
+        <!-- Right Side - Login Form -->
+        <div class="right-side">
+            <div class="form-container">
+                <div class="logo">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                
+                <h2 class="form-title">Welcome Back!</h2>
+                <p class="form-subtitle">Sign in to access your social dashboard</p>
+
+                {% if form.errors %}
+                    <div class="error-message">
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                                {{ error }}
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label for="{{ form.username.id_for_label }}">Username</label>
+                        {{ form.username }}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.password.id_for_label }}">Password</label>
+                        {{ form.password }}
+                        <i class="fas fa-eye password-toggle" onclick="togglePassword('password')" title="Show password"></i>
+                    </div>
+
+                    {% comment %} <div class="form-options">
+                        <label class="remember-me">
+                            <input type="checkbox" name="remember_me">
+                            <span>Remember Me</span>
+                        </label>
+                        <a href="#" class="forgot-password">Forgot Password?</a>
+                    </div> {% endcomment %}
+
+                    <button type="submit" class="auth-btn">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Sign In
+                    </button>
+                </form>
+
+                {% comment %} <div class="divider">
+                    <span>or continue with</span>
+                </div>
+
+                <button class="google-btn">
+                    <i class="fab fa-google"></i>
+                    Sign in with Google
+                </button> {% endcomment %}
+
+                <div class="auth-link">
+                    Don't have an account? <a href="{% url 'register' %}">Sign Up</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="{% static 'js/auth.js' %}"></script>
+</body>
+</html>

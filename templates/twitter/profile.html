@@ -1,0 +1,770 @@
+{% extends "base.html" %}
+{% block title %}Twitter Profile{% endblock %}
+
+{% block content %}
+<div class="twitter-profile-container">
+    <div class="twitter-profile-header">
+        <h2>🐦 Twitter Profile</h2>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-danger">
+            <strong>⚠️ Error:</strong> {{ error }}
+        </div>
+        <div class="actions">
+            <a href="{% url 'twitter_login' %}" class="btn btn-primary">🔄 Try Again</a>
+            <a href="/dashboard/" class="btn btn-secondary">🏠 Back to Dashboard</a>
+        </div>
+        
+    {% elif success %}
+        <div class="alert alert-success">
+            <strong>✅ Success!</strong> Twitter profile loaded successfully.
+        </div>
+        
+        <div class="profile-info">
+            {% if profile.profile_image_url %}
+                <div class="profile-image-container">
+                    <img src="{{ profile.profile_image_url }}" alt="Profile Picture">
+                </div>
+            {% endif %}
+            
+            <div class="profile-details">
+                <div class="profile-detail-item">
+                    <strong>User ID</strong>
+                    <span>{{ profile.id }}</span>
+                </div>
+                <div class="profile-detail-item">
+                    <strong>Name</strong>
+                    <span>{{ profile.name }}</span>
+                </div>
+                <div class="profile-detail-item">
+                    <strong>Username</strong>
+                    <span>@{{ profile.username }}</span>
+                </div>
+                <div class="profile-detail-item">
+                    <strong>Description</strong>
+                    <span>{{ profile.description|default:"No description available" }}</span>
+                </div>
+            </div>
+            
+            {% if profile.public_metrics %}
+                <div class="metrics-section">
+                    <h3>📊 Account Metrics</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <span class="metric-value">{{ profile.public_metrics.followers_count|default:"N/A" }}</span>
+                            <span class="metric-label">Followers</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-value">{{ profile.public_metrics.following_count|default:"N/A" }}</span>
+                            <span class="metric-label">Following</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-value">{{ profile.public_metrics.tweet_count|default:"N/A" }}</span>
+                            <span class="metric-label">Tweets</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-value">{{ profile.public_metrics.listed_count|default:"N/A" }}</span>
+                            <span class="metric-label">Listed</span>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="actions">
+            <a href="{% url 'twitter_login' %}" class="btn btn-primary">🔄 Refresh Profile</a>
+            <form method="post" action="{% url 'twitter_disconnect' %}" style="display: inline;" id="disconnectForm">
+                {% csrf_token %}
+                <button type="button" class="btn btn-danger" onclick="showDisconnectModal()">🔌 Disconnect Twitter</button>
+            </form>
+            <a href="/dashboard/" class="btn btn-secondary">🏠 Back to Dashboard</a>
+        </div>
+        
+    {% elif message %}
+        <div class="welcome-message">
+            <p>{{ message }}</p>
+            <div class="actions">
+                <a href="{% url 'twitter_login' %}" class="btn btn-primary">🔗 Connect Twitter Account</a>
+                <a href="/dashboard/" class="btn btn-secondary">🏠 Back to Dashboard</a>
+            </div>
+        </div>
+        
+    {% else %}
+        <div class="loading-container">
+            <p>Loading Twitter profile...</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Custom Disconnect Confirmation Modal -->
+<div id="disconnectModal" class="custom-modal" style="display: none;">
+    <div class="custom-modal-backdrop"></div>
+    <div class="custom-modal-content">
+        <div class="custom-modal-header">
+            <h4>⚠️ Disconnect Twitter Account</h4>
+        </div>
+        <div class="custom-modal-body">
+            <p><strong>Are you sure you want to disconnect your Twitter account?</strong></p>
+            <p>This will:</p>
+            <ul>
+                <li>• Remove all your Twitter data</li>
+                <li>• Delete stored tokens</li>
+                <li>• Clear analytics and tweets</li>
+            </ul>
+            <p class="warning-text"><strong>This action cannot be undone!</strong></p>
+        </div>
+        <div class="custom-modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="hideDisconnectModal()">Cancel</button>
+            <button type="button" class="btn btn-danger" onclick="confirmDisconnect()">Yes, Disconnect</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Light Theme Variables */
+:root {
+    --twitter-blue: #1da1f2;
+    --twitter-blue-dark: #1991db;
+    --twitter-black: #14171a;
+    --twitter-dark-gray: #657786;
+    --twitter-light-gray: #aab8c2;
+    --twitter-extra-light-gray: #e1e8ed;
+    --twitter-extra-extra-light-gray: #f5f8fa;
+    --success-light: #d4edda;
+    --success-dark: #155724;
+    --error-light: #f8d7da;
+    --error-dark: #721c24;
+    --warning-light: #fff3cd;
+    --warning-dark: #856404;
+}
+
+/* Dark Theme Variables */
+[data-theme="dark"] {
+    --twitter-blue: #1da1f2;
+    --twitter-blue-dark: #1991db;
+    --twitter-black: #ffffff;
+    --twitter-dark-gray: #8899a6;
+    --twitter-light-gray: #71767b;
+    --twitter-extra-light-gray: #2f3336;
+    --twitter-extra-extra-light-gray: #15202b;
+    --success-light: #1e3a1e;
+    --success-dark: #4caf50;
+    --error-light: #3e1a1a;
+    --error-dark: #f44336;
+    --warning-light: #332a1a;
+    --warning-dark: #ff9800;
+}
+
+/* Main Container */
+.twitter-profile-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header */
+.twitter-profile-header {
+    background: linear-gradient(135deg, var(--twitter-blue), var(--twitter-blue-dark));
+    color: white;
+    padding: 30px;
+    border-radius: 20px 20px 0 0;
+    margin-bottom: 0;
+    box-shadow: 0 4px 15px rgba(29, 161, 242, 0.3);
+}
+
+.twitter-profile-header h2 {
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Alert Styles */
+.alert {
+    padding: 20px;
+    margin-bottom: 25px;
+    border: none;
+    border-radius: 15px;
+    border-left: 5px solid;
+    font-weight: 500;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+}
+
+.alert-danger {
+    color: var(--error-dark);
+    background: linear-gradient(135deg, var(--error-light), rgba(248, 215, 218, 0.8));
+    border-left-color: var(--error-dark);
+}
+
+.alert-success {
+    color: var(--success-dark);
+    background: linear-gradient(135deg, var(--success-light), rgba(212, 237, 218, 0.8));
+    border-left-color: var(--success-dark);
+}
+
+/* Profile Info Card */
+.profile-info {
+    background: var(--twitter-extra-extra-light-gray);
+    padding: 30px;
+    border-radius: 0 0 20px 20px;
+    margin: 0 0 30px 0;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border: 1px solid var(--twitter-extra-light-gray);
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--twitter-blue), var(--twitter-blue-dark));
+}
+
+/* Profile Image */
+.profile-image-container {
+    text-align: center;
+    margin-bottom: 25px;
+    position: relative;
+}
+
+.profile-image-container img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 4px solid var(--twitter-blue);
+    box-shadow: 0 8px 25px rgba(29, 161, 242, 0.3);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.profile-image-container img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 35px rgba(29, 161, 242, 0.4);
+}
+
+/* Profile Details */
+.profile-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.profile-detail-item {
+    background: rgba(29, 161, 242, 0.05);
+    padding: 15px 20px;
+    border-radius: 12px;
+    border-left: 4px solid var(--twitter-blue);
+    transition: all 0.3s ease;
+}
+
+.profile-detail-item:hover {
+    background: rgba(29, 161, 242, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(29, 161, 242, 0.2);
+}
+
+.profile-detail-item strong {
+    color: var(--twitter-blue);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.profile-detail-item span {
+    color: var(--twitter-black);
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+/* Metrics Section */
+.metrics-section {
+    background: linear-gradient(135deg, rgba(29, 161, 242, 0.1), rgba(29, 161, 242, 0.05));
+    padding: 25px;
+    border-radius: 15px;
+    margin: 25px 0;
+    border: 1px solid rgba(29, 161, 242, 0.2);
+}
+
+.metrics-section h3 {
+    color: var(--twitter-blue);
+    margin: 0 0 20px 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.metric-item {
+    background: rgba(255, 255, 255, 0.8);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    border: 1px solid var(--twitter-extra-light-gray);
+}
+
+[data-theme="dark"] .metric-item {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: var(--twitter-extra-light-gray);
+}
+
+.metric-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(29, 161, 242, 0.2);
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--twitter-blue);
+    display: block;
+    margin-bottom: 5px;
+}
+
+.metric-label {
+    color: var(--twitter-dark-gray);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Welcome Message */
+.welcome-message {
+    text-align: center;
+    padding: 40px;
+    background: linear-gradient(135deg, var(--twitter-extra-extra-light-gray), rgba(245, 248, 250, 0.8));
+    border-radius: 20px;
+    border: 2px dashed var(--twitter-light-gray);
+    margin: 30px 0;
+}
+
+.welcome-message p {
+    font-size: 1.2rem;
+    color: var(--twitter-dark-gray);
+    margin-bottom: 25px;
+    font-weight: 500;
+}
+
+/* Action Buttons */
+.actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-top: 30px;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px 24px;
+    text-decoration: none;
+    border-radius: 25px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--twitter-blue), var(--twitter-blue-dark));
+    color: white;
+    border: 2px solid var(--twitter-blue);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--twitter-blue-dark), #1581c2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(29, 161, 242, 0.4);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, var(--twitter-dark-gray), #5a6c7a);
+    color: white;
+    border: 2px solid var(--twitter-dark-gray);
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, #5a6c7a, #4a5a68);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(101, 119, 134, 0.4);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+    border: 2px solid #dc3545;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #c82333, #bd2130);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+}
+
+/* Loading State */
+.loading-container {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--twitter-dark-gray);
+}
+
+.loading-container::before {
+    content: '🐦';
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 20px;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-20px);
+    }
+    60% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .twitter-profile-container {
+        padding: 10px;
+    }
+    
+    .twitter-profile-header {
+        padding: 20px;
+        border-radius: 15px 15px 0 0;
+    }
+    
+    .twitter-profile-header h2 {
+        font-size: 2rem;
+    }
+    
+    .profile-info {
+        padding: 20px;
+        border-radius: 0 0 15px 15px;
+    }
+    
+    .profile-details {
+        grid-template-columns: 1fr;
+    }
+    
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .btn {
+        width: 100%;
+        max-width: 250px;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .profile-image-container img {
+        width: 100px;
+        height: 100px;
+    }
+}
+
+/* Custom Modal Styles */
+.custom-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+}
+
+.custom-modal-content {
+    position: relative;
+    background: white;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.custom-modal-header {
+    padding: 20px 24px 0 24px;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+.custom-modal-header h4 {
+    margin: 0 0 15px 0;
+    color: #dc3545;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.custom-modal-body {
+    padding: 20px 24px;
+    color: #333;
+    line-height: 1.6;
+}
+
+.custom-modal-body ul {
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.custom-modal-body li {
+    margin: 8px 0;
+    color: #555;
+}
+
+.warning-text {
+    color: #dc3545;
+    font-weight: 600;
+    margin-top: 15px;
+}
+
+.custom-modal-footer {
+    padding: 0 24px 24px 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid #e1e5e9;
+    margin-top: 10px;
+    padding-top: 20px;
+}
+
+.custom-modal-footer .btn {
+    min-width: 100px;
+    padding: 10px 20px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.custom-modal-footer .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+</style>
+
+<script>
+/**
+ * Show disconnect confirmation modal
+ */
+function showDisconnectModal() {
+    const modal = document.getElementById('disconnectModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    }
+}
+
+/**
+ * Hide disconnect confirmation modal
+ */
+function hideDisconnectModal() {
+    const modal = document.getElementById('disconnectModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = ''; // Restore scrolling
+    }
+}
+
+/**
+ * Confirm disconnect and submit form
+ */
+function confirmDisconnect() {
+    clearPlatformSession('twitter');
+    hideDisconnectModal();
+    
+    // Submit the form
+    const form = document.getElementById('disconnectForm');
+    if (form) {
+        form.submit();
+    }
+}
+
+/**
+ * Clear platform-specific session data and cache
+ */
+function clearPlatformSession(platform) {
+    try {
+        // Clear localStorage
+        if (typeof(Storage) !== "undefined") {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes(platform) || key.includes('oauth') || key.includes('token'))) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+        }
+
+        // Clear sessionStorage
+        if (typeof(Storage) !== "undefined") {
+            const sessionKeysToRemove = [];
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                if (key && (key.includes(platform) || key.includes('oauth') || key.includes('token'))) {
+                    sessionKeysToRemove.push(key);
+                }
+            }
+            sessionKeysToRemove.forEach(key => sessionStorage.removeItem(key));
+        }
+
+        // Clear browser cache for specific platform domains
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                names.forEach(function(name) {
+                    if (name.includes(platform) || name.includes('twitter') || name.includes('oauth')) {
+                        caches.delete(name);
+                    }
+                });
+            });
+        }
+
+        // For Twitter, try to clear platform session via hidden iframe
+        if (platform === 'twitter') {
+            try {
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.style.width = '1px';
+                iframe.style.height = '1px';
+                iframe.src = 'https://twitter.com/logout';
+                document.body.appendChild(iframe);
+                
+                // Remove iframe after 3 seconds
+                setTimeout(() => {
+                    if (iframe.parentNode) {
+                        iframe.parentNode.removeChild(iframe);
+                    }
+                }, 3000);
+            } catch (e) {
+                console.warn('Could not clear Twitter session via iframe:', e);
+            }
+        }
+
+        // Force browser to not cache the next request
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname + '?_=' + Date.now());
+        }
+
+        console.log(`Platform session cleared for: ${platform}`);
+    } catch (error) {
+        console.warn('Error clearing platform session:', error);
+    }
+}
+
+/**
+ * Add cache-busting parameters to OAuth URLs
+ */
+function bustOAuthCache() {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(7);
+    return `_cache_bust=${timestamp}&_rand=${random}`;
+}
+
+// Clear any existing platform sessions on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Only clear if we're on a disconnected state page
+    const connectButtons = document.querySelectorAll('a[href*="twitter_login"]');
+    if (connectButtons.length > 0) {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('disconnected') === 'true') {
+            clearPlatformSession('twitter');
+        }
+    }
+
+    // Add event listener to close modal when clicking outside
+    const modal = document.getElementById('disconnectModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal || e.target.classList.contains('custom-modal-backdrop')) {
+                hideDisconnectModal();
+            }
+        });
+    }
+
+    // Add ESC key listener to close modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            hideDisconnectModal();
+        }
+    });
+});
+</script>
+
+{% endblock %}
